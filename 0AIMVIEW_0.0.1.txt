@@ -1,0 +1,3 @@
+
+local player = game.Players.LocalPlayer
+player:Kick("Check For Updates, https://discord.gg/HnhGXFq54c")
