@@ -1,3 +1,12 @@
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Updates:",
+    Text = "Join Our DISCORD for more information.",
+    Duration = 5
+})
+wait(0.2)
+setclipboard("https://discord.gg/HnhGXFq54c")
 
-local player = game.Players.LocalPlayer
-player:Kick("Check For Updates, https://discord.gg/HnhGXFq54c")
+
+
+--[[local player = game.Players.LocalPlayer
+player:Kick("Check For Updates, https://discord.gg/HnhGXFq54c")]]
