@@ -1,0 +1,95 @@
+local Players, ReplicatedStorage, CoreGui = game:GetService("Players"), game:GetService("ReplicatedStorage"), game:GetService("CoreGui")
+
+loadstring(game:HttpGet("https://pastefy.app/xLUeuByu/raw", true))()
+wait(0.5)
+
+local button = CoreGui:WaitForChild("ShiftlockStarterGui"):WaitForChild("ImageButton")
+button.Position = UDim2.new(1, -120, 1, -175)
+button.Size = UDim2.new(0, 57, 0, 57)
+
+local onImage = "rbxasset://textures/ui/mouseLock_on@2x.png"
+local offImage = "rbxasset://textures/ui/mouseLock_off@2x.png"
+
+local anim = ReplicatedStorage:FindFirstChild("ybjump")
+if not anim then
+	anim = Instance.new("Animation")
+	anim.Name = "ybjump"
+	anim.AnimationId = "rbxassetid://132426903395505"
+	anim.Parent = ReplicatedStorage
+end
+
+local LocalPlayer = Players.LocalPlayer
+local offsetAmount = Vector3.new(2, 0, 0)
+local animationInstance = ReplicatedStorage:WaitForChild("ybjump")
+local animationId = animationInstance.AnimationId
+
+local function setupCharacter(character)
+	local humanoid = character:WaitForChild("Humanoid")
+	local animator = humanoid:FindFirstChildOfClass("Animator") or (function()
+		local a = Instance.new("Animator")
+		a.Parent = humanoid
+		return a
+	end)()
+
+	local animObj = Instance.new("Animation")
+	animObj.AnimationId = animationId
+	local track = animator:LoadAnimation(animObj)
+	track.Looped = true
+	track.Priority = Enum.AnimationPriority.Action
+
+	local moveConn
+
+	local function clearMoveConn()
+		if moveConn then
+			pcall(function() moveConn:Disconnect() end)
+			moveConn = nil
+		end
+	end
+
+	local function stopWhenPlayerMoves()
+		clearMoveConn()
+		moveConn = humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
+			if humanoid.MoveDirection.Magnitude > 0 then
+				if track.IsPlaying then
+					track:Stop()
+				else
+					track:Stop()
+				end
+				clearMoveConn()
+			end
+		end)
+		if humanoid.MoveDirection.Magnitude > 0 then
+			track:Stop()
+			clearMoveConn()
+		end
+	end
+
+	local function updateState()
+		clearMoveConn()
+		if button.Image == onImage then
+			humanoid.CameraOffset = offsetAmount
+			if not track.IsPlaying then track:Play() end
+			track:AdjustSpeed(1)
+			stopWhenPlayerMoves()
+		elseif button.Image == offImage then
+			humanoid.CameraOffset = Vector3.new(0, 0, 0)
+			if humanoid.MoveDirection.Magnitude > 0 then
+				track:Stop()
+			else
+				if track.IsPlaying then stopWhenPlayerMoves() end
+			end
+		end
+	end
+
+	updateState()
+	button:GetPropertyChangedSignal("Image"):Connect(updateState)
+	character.AncestryChanged:Connect(function()
+		if not character:IsDescendantOf(game) then
+			clearMoveConn()
+			if track.IsPlaying then track:Stop() end
+		end
+	end)
+end
+
+if LocalPlayer.Character then setupCharacter(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
