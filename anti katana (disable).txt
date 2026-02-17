@@ -1,0 +1,102 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local TOOL_NAME = "katana"         -- default
+local SCAN_INTERVAL = 0.8         -- default
+
+local watchers = {}               
+
+local function cleanupWatch(tool)
+    local t = watchers[tool]
+    if t then
+        for _,c in ipairs(t) do
+            if c and c.Connected then pcall(function() c:Disconnect() end) end
+        end
+        watchers[tool] = nil
+    end
+end
+
+local function watchTool(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    if watchers[tool] then return end
+
+    pcall(function() tool.Enabled = false end)
+
+    local enabledConn = tool:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if tool.Enabled then
+            pcall(function() tool.Enabled = false end)
+        end
+    end)
+
+    local parentConn = tool:GetPropertyChangedSignal("Parent"):Connect(function()
+        pcall(function() tool.Enabled = false end)
+    end)
+
+    local ancestryConn
+    ancestryConn = tool.AncestryChanged:Connect(function(_, newParent)
+        local inCharacter = player.Character and tool:IsDescendantOf(player.Character)
+        local inBackpack  = player:FindFirstChild("Backpack") and tool:IsDescendantOf(player.Backpack)
+        if not inCharacter and not inBackpack then
+            cleanupWatch(tool)
+            if ancestryConn and ancestryConn.Connected then pcall(function() ancestryConn:Disconnect() end) end
+        else
+            pcall(function() tool.Enabled = false end)
+        end
+    end)
+
+    watchers[tool] = { enabledConn, parentConn, ancestryConn }
+end
+
+local function scanForTool()
+    if player.Character then
+        for _,child in ipairs(player.Character:GetChildren()) do
+            if child:IsA("Tool") and child.Name == TOOL_NAME then
+                watchTool(child)
+            end
+        end
+    end
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _,child in ipairs(backpack:GetChildren()) do
+            if child:IsA("Tool") and child.Name == TOOL_NAME then
+                watchTool(child)
+            end
+        end
+    end
+end
+
+scanForTool()
+spawn(function()
+    while true do
+        scanForTool()
+        wait(SCAN_INTERVAL)
+    end
+end)
+
+player.CharacterAdded:Connect(function(char)
+    wait(0.1)
+    scanForTool()
+end)
+
+local function hookBackpack()
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return end
+    backpack.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and child.Name == TOOL_NAME then
+            wait(0.05)
+            watchTool(child)
+        end
+    end)
+end
+
+if player:FindFirstChild("Backpack") then
+    hookBackpack()
+else
+    player.ChildAdded:Connect(function(child)
+        if child.Name == "Backpack" then
+            hookBackpack()
+        end
+    end)
+end
